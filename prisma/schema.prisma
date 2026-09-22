@@ -1,0 +1,207 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Enums are modeled as validated strings because the SQLite connector
+// does not support native Prisma enums. Allowed values are documented
+// inline and enforced with zod in src/lib/validation.ts.
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  name          String
+  phone         String?
+  role          String // "family" | "caregiver" | "admin"
+  accountStatus String   @default("active") // "active" | "suspended"
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  caregiverProfile CaregiverProfile?
+  careRequests     CareRequest[]              @relation("FamilyCareRequests")
+  sentMessages     Message[]                  @relation("MessageSender")
+  conversations    ConversationParticipant[]
+  reviewsGiven     Review[]                   @relation("ReviewsGiven")
+  reviewsReceived  Review[]                   @relation("ReviewsReceived")
+  reportsFiled     Report[]                   @relation("ReportsFiled")
+  reportsReceived  Report[]                   @relation("ReportsReceived")
+  blocksInitiated  Block[]                    @relation("BlocksInitiated")
+  blocksReceived   Block[]                    @relation("BlocksReceived")
+  notifications    Notification[]
+}
+
+model CaregiverProfile {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id])
+  photoUrl           String?
+  bio                String?
+  location           String
+  travelRadiusKm     Int      @default(10)
+  education          String?
+  certifications     String? // JSON string array
+  experienceYears    Int      @default(0)
+  careCapabilities   String // JSON string array
+  languages          String // JSON string array
+  availability       String // JSON string (days/hours)
+  preferredWorkType  String // "live_in" | "visit_based" | "both"
+  verificationStatus String   @default("pending") // "pending" | "verified" | "rejected"
+  verificationNotes  String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  documents    Document[]
+  applications Application[]
+  matches      Match[]
+}
+
+model Document {
+  id                 String   @id @default(cuid())
+  caregiverProfileId String
+  caregiverProfile   CaregiverProfile @relation(fields: [caregiverProfileId], references: [id])
+  fileName           String
+  fileUrl            String
+  docType            String // "id" | "certificate" | "reference" | "other"
+  reviewStatus       String   @default("pending") // "pending" | "approved" | "rejected"
+  uploadedAt         DateTime @default(now())
+}
+
+model CareRequest {
+  id                  String   @id @default(cuid())
+  familyUserId        String
+  familyUser          User     @relation("FamilyCareRequests", fields: [familyUserId], references: [id])
+  location            String
+  startDate           DateTime
+  hoursSchedule       String
+  careType             String // "live_in" | "visit_based"
+  requiredTasks       String // JSON string array
+  preferredAttributes String?
+  budgetMin           Int?
+  budgetMax           Int?
+  notes               String?
+  status              String   @default("open") // "open" | "matched" | "closed" | "cancelled"
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  applications  Application[]
+  matches       Match[]
+  conversations Conversation[]
+}
+
+model Application {
+  id                 String   @id @default(cuid())
+  careRequestId      String
+  careRequest        CareRequest      @relation(fields: [careRequestId], references: [id])
+  caregiverProfileId String
+  caregiverProfile   CaregiverProfile @relation(fields: [caregiverProfileId], references: [id])
+  message            String
+  status             String   @default("pending") // "pending" | "accepted" | "rejected" | "withdrawn"
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([careRequestId, caregiverProfileId])
+}
+
+model Match {
+  id                 String    @id @default(cuid())
+  careRequestId      String
+  careRequest        CareRequest      @relation(fields: [careRequestId], references: [id])
+  caregiverProfileId String
+  caregiverProfile   CaregiverProfile @relation(fields: [caregiverProfileId], references: [id])
+  status             String    @default("proposed") // "proposed" | "confirmed" | "completed" | "cancelled"
+  proposedAt         DateTime  @default(now())
+  confirmedAt        DateTime?
+  completedAt        DateTime?
+  cancelledAt        DateTime?
+
+  conversation Conversation?
+  reviews      Review[]
+
+  @@unique([careRequestId, caregiverProfileId])
+}
+
+model Conversation {
+  id            String   @id @default(cuid())
+  careRequestId String?
+  careRequest   CareRequest? @relation(fields: [careRequestId], references: [id])
+  matchId       String?      @unique
+  match         Match?       @relation(fields: [matchId], references: [id])
+  createdAt     DateTime     @default(now())
+
+  participants ConversationParticipant[]
+  messages     Message[]
+}
+
+model ConversationParticipant {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  userId         String
+  user           User         @relation(fields: [userId], references: [id])
+
+  @@unique([conversationId, userId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  senderId       String
+  sender         User         @relation("MessageSender", fields: [senderId], references: [id])
+  body           String
+  createdAt      DateTime     @default(now())
+  readAt         DateTime?
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  matchId    String
+  match      Match    @relation(fields: [matchId], references: [id])
+  reviewerId String
+  reviewer   User     @relation("ReviewsGiven", fields: [reviewerId], references: [id])
+  revieweeId String
+  reviewee   User     @relation("ReviewsReceived", fields: [revieweeId], references: [id])
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  @@unique([matchId, reviewerId])
+}
+
+model Report {
+  id             String   @id @default(cuid())
+  reporterId     String
+  reporter       User     @relation("ReportsFiled", fields: [reporterId], references: [id])
+  reportedUserId String
+  reportedUser   User     @relation("ReportsReceived", fields: [reportedUserId], references: [id])
+  reason         String
+  details        String?
+  status         String   @default("open") // "open" | "reviewed" | "dismissed"
+  createdAt      DateTime @default(now())
+}
+
+model Block {
+  id        String   @id @default(cuid())
+  blockerId String
+  blocker   User     @relation("BlocksInitiated", fields: [blockerId], references: [id])
+  blockedId String
+  blocked   User     @relation("BlocksReceived", fields: [blockedId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  type      String // "new_application" | "new_message" | "match_confirmed" | "schedule_reminder"
+  payload   String // JSON string
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+}
