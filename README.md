@@ -101,3 +101,7 @@ Storage before scaling past one server.
 - `npm run lint` — ESLint
 - `npm run db:seed` — reseed demo data (`npx prisma migrate reset` first if
   you want a clean slate)
+- `npm test` — runs the Vitest suite against a dedicated SQLite database
+  (`prisma/test.db`, migrated fresh by the `pretest` script); covers the
+  accept-to-match flow, review gating, match completion/cancellation, and
+  the production `AUTH_SECRET` guard

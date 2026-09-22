@@ -38,6 +38,10 @@ yarn-error.log*
 /prisma/dev.db
 /prisma/dev.db-journal
 
+# sqlite test database (recreated by `npm run pretest`)
+/prisma/test.db
+/prisma/test.db-journal
+
 # user-uploaded documents (dev/pilot local storage)
 /public/uploads/*
 !/public/uploads/.gitkeep

@@ -3,7 +3,10 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { authConfig } from "@/auth.config";
+import { assertAuthSecretConfigured } from "@/lib/env-guard";
 import type { Role } from "@/lib/constants";
+
+assertAuthSecretConfigured();
 
 declare module "next-auth" {
   interface Session {

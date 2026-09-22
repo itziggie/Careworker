@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:seed": "tsx --env-file=.env prisma/seed.ts"
+    "db:seed": "tsx --env-file=.env prisma/seed.ts",
+    "pretest": "rm -f prisma/test.db && DATABASE_URL=\"file:./test.db\" npx prisma migrate deploy",
+    "test": "vitest run"
   },
   "prisma": {
     "seed": "tsx --env-file=.env prisma/seed.ts"
@@ -32,6 +34,8 @@
     "eslint-config-next": "16.3.5",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^3.2.7"
   }
 }
